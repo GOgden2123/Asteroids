@@ -25,7 +25,7 @@ class Asteroid:
         self.points = []
         self.direction = degtoRad(56)
         self.speed = 1.0
-
+        
         #Shape of the Asteroid
         self.radius = 50
 
@@ -38,8 +38,10 @@ class Asteroid:
         self.y = randint(0, screen_size[1])
         self.n = 10
         self.polar_cords = []
-        self.visible = True 
+        self.visible = True
+        self.explosion = Explosion(self.render_Surface, self.x, self.y)
 
+        
         #Asteroid screen movement
         for i in range (self.n):
             r = randint(25, 50)
@@ -73,12 +75,18 @@ class Asteroid:
             #Asteroid rotatational movement
             angle = self.polar_cords[i][1]+self.visual_angle
             self.points.append([r*cos(angle)+self.x, r*sin(angle)+self.y])
-            
+
+        self.explosion.x = self.x
+        self.explosion.y = self.y
+        self.explosion.update()
+    
         return
 
     def render (self):
          if self.visible == True:
              pg.draw.polygon(self.render_Surface,self.color,self.points,self.thickness)
+
+         self.explosion.render()
              
          return
 
@@ -117,34 +125,45 @@ class Ship:
         self.thickness = 2
         self.shipDirection = 0
         self.speed = 5
-        self.r = randint(25, 50)
+        self.radius = 8
         #Origin (X,Y) 
         self.x = randint(0, screen_size[0])
         self.y = randint(0, screen_size[1])
         #Stored as angle/radius 
         self.polar_cords = [[0,20], [degtoRad(100),5], [degtoRad(260),5]]
         self.rotation_speed = 5
-        self.num_points = 3 
+        self.num_points = 3
+        self.ship_explosion = Explosion(self.render_Surface, self.x, self.y)
+        self.sound_playing = False
+        self.thruster_sound = pg.mixer.Sound(file='game_sfx/shipThruster.wav')
         return
 
     def update (self):
         #Ship Movement
         if keys_down [pg.K_RIGHT]:
             self.shipDirection += 0.1
+            if self.sound_playing == False:
+                self.sound_playing = True
+                self.thruster_sound.play(loops=-1)
+                
+                
         if keys_down [pg.K_UP]:
             dx = self.speed * cos(self.shipDirection)
             dy = self.speed * sin(self.shipDirection)
+            
 
             self.x += dx
             self.y += dy
+
+            if self.sound_playing == False:
+                self.sound_playing = True
+                self.thruster_sound.play(loops=-1)
+            
         
         if self.x > screen_size[0]:
             self.x = 0
         elif self.x <= -1:
             self.x = screen_size[0]
-            
-            
-            
 
         if self.y > screen_size[1]:
             self.y = 0
@@ -155,9 +174,21 @@ class Ship:
             
         if keys_down [pg.K_LEFT]:
             self.shipDirection -= 0.1
+            if self.sound_playing == False:
+                self.sound_playing = True
+                self.thruster_sound.play(loops=-1)
         xn = self.polar_cords[0][1]*cos(self.polar_cords[0][0]+self.shipDirection) + self.x
         yn = self.polar_cords[0][1]*sin(self.polar_cords[0][0]+self.shipDirection) + self.y
         self.gunBarrel = [xn,yn]
+        self.ship_explosion.x = self.x
+        self.ship_explosion.y = self.y
+        self.ship_explosion.update()
+
+
+        if not keys_down [pg.K_RIGHT] and not keys_down [pg.K_LEFT] and not keys_down [pg.K_UP]:
+            self.sound_playing = False
+            self.thruster_sound.stop()
+        
         return
     
     def render (self):
@@ -167,7 +198,10 @@ class Ship:
             yn = self.polar_cords[i][1]*sin(self.polar_cords[i][0]+self.shipDirection) + self.y
             points.append([xn,yn])
             
+            
         pg.draw.polygon(self.render_Surface,self.color,points,self.thickness)
+        self.ship_explosion.render()
+        #pg.draw.circle(self.render_Surface, (255,255,255), (self.x,self.y), self.radius, 3)
         return
 
 
@@ -208,8 +242,6 @@ class Bullet:
             if self.center[1] < 0:
                 self.readyToFire = True
                 self.visible = False
-                
-            
             
         return
 
@@ -232,7 +264,7 @@ class Bullet:
 
     #end Bullet class
 
-class explosion:
+class Explosion:
     def __init__ (self, render_Surface, x, y):
         self.render_Surface = render_Surface
         self.x = x
@@ -252,6 +284,7 @@ class explosion:
     def render (self):
         for particle in self.particles:
             particle.render()
+        
 
         return
 
@@ -264,16 +297,18 @@ class explosion:
     def detonate (self):
         for particle in self.particles:
             #Put all particles into one point
-            particle.center = [1,1]
+            particle.center = [self.x,self.y]
             #Give every particle a random speed and direction
-            particle.velocity = random.randint(1,5)
-            particle.direction = degtoRad(random.randint(0,360))
+            #particle.velocity = random.randint(1,5)
+            #particle.direction = degtoRad(random.randint(0,360))
             #Give every particle a random duration
             #particle.duration = random.randint(1,6)
+            #particle.visible = True
+            #particle.active = True
+            particle.shoot(random.randint(1,5), degtoRad(random.randint(0,360)), particle.center)
 
-            return
-
-        return 
+        return
+    
         
     #end explosion class
         
@@ -282,13 +317,27 @@ def main():
     global keys_down
     #initialize Pygame
     pg.init()
-    
+    asteroid_curtick = 0
+    asteroid_lasttick = 0
+    interval = randint(69, 1234)
+    high_score = 0
+    lives = 5
+    lives_font = pg.font.Font(None, 32)
+    score_font = pg.font.Font(None, 32)
+    endgame_font = pg.font.Font(None, 32)
+    paused = False
     #assign a display surface to our screen
     screen = pg.display.set_mode(screen_size)
     clock = pg.time.Clock()    
     num_asteroids = []
+    explosion = Explosion(screen, 100,100)
     ship = Ship(screen)
     bullet = Bullet(1, screen)
+    restart_font = pg.font.Font(None, 32)
+    bullet_sound = pg.mixer.Sound(file='game_sfx/laserShoot.wav')
+    explosion_sound = pg.mixer.Sound(file='game_sfx/explosion.wav')
+    
+
     for i in range (2):
         num_asteroids.append(Asteroid(screen))
         num_asteroids[-1].direction = degtoRad(randint(0,359))
@@ -301,6 +350,7 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
+                
             #end if
         #end for
 
@@ -309,6 +359,10 @@ def main():
         #Firing a bullet
         if keys_down[pg.K_SPACE]:
             bullet.shoot(5, ship.shipDirection, ship.gunBarrel)
+            bullet_sound.play()
+
+        if keys_down[pg.K_e]:
+            explosion.detonate()
 
         #get mouse position
         mouse_pos = pg.mouse.get_pos()
@@ -317,64 +371,134 @@ def main():
 
         #sync frame rate
         clock.tick(fps)
-        
-        #update game objects
-        for i in num_asteroids:
-            i.update()
+        if not paused:
+            #update game objects
+            for i in num_asteroids:
+                i.update()
+            explosion.update()
+            ship.update()
+            bullet.update()
 
-        ship.update()
-        bullet.update()
-        
-        
-        #Bullet collision with asteroid 
-        #What do we want to happen? When a bullet is shot, we want to see it collide with an asteroid and break it into two smaller asteroids (two new instances?).
-        #To reflect this we would want to remove an asteroid from num_asteroids list and add a smaller asteroid in.
-        #Splitting normal asteroid into two smaller asteroids upon collision
-        new_asteroids = []
-        deleted_asteroids = []
-
-        for i in range(len(num_asteroids)):
-            if num_asteroids[i].collide(bullet):
-                bullet.center[0] = 10000
-                deleted_asteroids.append(i)
-
-                new_asteroids.append(Asteroid(screen))
-                new_asteroids[-1].resize(num_asteroids[i].radius/2)
-                print(new_asteroids[-1].radius)
-                new_asteroids[-1].x = num_asteroids[i].x
-                new_asteroids[-1].x -= 10 
-                new_asteroids[-1].y = num_asteroids[i].y
-                new_asteroids[-1].y -= 10
-                new_asteroids[-1].direction = bullet.direction + degtoRad(30)
-
-                new_asteroids.append(Asteroid(screen))
-                new_asteroids[-1].resize(num_asteroids[i].radius/2)
-                new_asteroids[-1].x = num_asteroids[i].x
-                new_asteroids[-1].x -= 10 
-                new_asteroids[-1].y = num_asteroids[i].y
-                new_asteroids[-1].y -= 10
-                new_asteroids[-1].direction = bullet.direction + degtoRad(-30)
+            if lives < 0:
+                paused = True
                 
-        num_asteroids.extend(new_asteroids)
+           
+            #Bullet collision with asteroid 
+            #What do we want to happen? When a bullet is shot, we want to see it collide with an asteroid and break it into two smaller asteroids (two new instances?).
+            #To reflect this we would want to remove an asteroid from num_asteroids list and add a smaller asteroid in.
+            #Splitting normal asteroid into two smaller asteroids upon collision
+            new_asteroids = []
+            deleted_asteroids = []
 
-        for i in range (len(num_asteroids)):
-            if num_asteroids[i].radius <= 13:
-                if i not in deleted_asteroids: 
+            for i in range(len(num_asteroids)):
+                if num_asteroids[i].collide(bullet) or num_asteroids[i].collide(ship):
+                    if num_asteroids[i].collide(bullet):
+                        high_score = high_score+50
+                        print(high_score)
+                    bullet.center[0] = 10000
                     deleted_asteroids.append(i)
-        deleted_asteroids = sorted(deleted_asteroids, reverse = True)        
-        for i in deleted_asteroids:
-            num_asteroids.pop(i)
+                    explosion_sound.play()
+                    
+                    new_asteroids.append(Asteroid(screen))
+                    new_asteroids[-1].resize(num_asteroids[i].radius/2)
+                    new_asteroids[-1].x = num_asteroids[i].x
+                    new_asteroids[-1].x -= 10 
+                    new_asteroids[-1].y = num_asteroids[i].y
+                    new_asteroids[-1].y -= 10
+                    new_asteroids[-1].direction = bullet.direction + degtoRad(30)
 
-        #render screen
-        screen.fill((0,0,0))
-        ship.render()
-        bullet.render()
+                    new_asteroids.append(Asteroid(screen))
+                    new_asteroids[-1].resize(num_asteroids[i].radius/2)
+                    new_asteroids[-1].x = num_asteroids[i].x
+                    new_asteroids[-1].x -= 10 
+                    new_asteroids[-1].y = num_asteroids[i].y
+                    new_asteroids[-1].y -= 10
+                    new_asteroids[-1].direction = bullet.direction + degtoRad(-30)
+                    new_asteroids[-1].explosion.x = num_asteroids[i].x
+                    new_asteroids[-1].explosion.y = num_asteroids[i].y
+                    if new_asteroids[-1].radius > 13:
+                        new_asteroids[-1].explosion.detonate()
 
-        for i in range(len(num_asteroids)):
-            num_asteroids[i].render()
+                if  num_asteroids[i].collide(ship):
+                    ship.ship_explosion.detonate()
+                    ship.x = screen_size[0]/2
+                    ship.y = screen_size[1]/2
+                    lives = lives-1
+           
+            num_asteroids.extend(new_asteroids)
+
+            for i in range (len(num_asteroids)):
+                if num_asteroids[i].radius <= 13:
+                    if i not in deleted_asteroids: 
+                        deleted_asteroids.append(i)
+            deleted_asteroids = sorted(deleted_asteroids, reverse = True)
             
+            for i in deleted_asteroids:
+                explosion = num_asteroids[i].explosion
+                explosion.detonate()
+                num_asteroids.pop(i)
+
+            #render screen
+            screen.fill((0,0,0))
+            ship.render()
+            bullet.render()
+            explosion.render()
+            screen.blit(score_font.render('Score =%d'% high_score, False, (255,255,255)), (0,0))
+            screen.blit(lives_font.render('Lives=%d'% lives, False, (255,255,255)), (0,30))
+
+            for i in range(len(num_asteroids)):
+                num_asteroids[i].render()
+
+
+            #Asteroid spawning 
+            if asteroid_curtick - asteroid_lasttick >= interval:
+                if len(num_asteroids) < 12:
+                    num_asteroids.append(Asteroid(screen))
+                    num_asteroids[-1].x = randint(0, screen_size[0])
+                    num_asteroids[-1].y = randint(0, screen_size[1])
+                
+                interval = randint(int(3*1000), int(5*1000))
+                asteroid_lasttick = asteroid_curtick
+            else:
+                asteroid_curtick = pg.time.get_ticks()
+
+        else:
+            game_over = 'Game Over.'
+            restart_prompt = 'Would you like to play again? Press Enter for YES, or Escape for NO.'
+            screen.blit(endgame_font.render(game_over, False, (0,255,0)), (screen_size[0]/2-endgame_font.size(game_over)[0]/2, screen_size[1]/2))
+            screen.blit(restart_font.render(restart_prompt, False, (0,255,0)), (screen_size[0]/2-restart_font.size(restart_prompt)[0]/2, screen_size[1]/2 +50))
+
+            if keys_down[pg.K_RETURN]:
+                high_score = 0
+                lives = 5
+                lives_font = pg.font.Font(None, 32)
+                score_font = pg.font.Font(None, 32)
+                endgame_font = pg.font.Font(None, 32)
+                paused = False
+                #assign a display surface to our screen
+                screen = pg.display.set_mode(screen_size)
+                clock = pg.time.Clock()    
+                num_asteroids = []
+                explosion = Explosion(screen, 100,100)
+                ship = Ship(screen)
+                bullet = Bullet(1, screen)
+                restart_font = pg.font.Font(None, 32) 
+
+                for i in range (2):
+                    num_asteroids.append(Asteroid(screen))
+                    num_asteroids[-1].direction = degtoRad(randint(0,359))
+
+            elif keys_down[pg.K_ESCAPE]:
+                running = False 
+                
+                    
+                
+
+   
         pg.display.flip()
-    #end while
+     #end while
+
+
 
     pg.quit()
 
