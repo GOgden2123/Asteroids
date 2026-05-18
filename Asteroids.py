@@ -14,7 +14,7 @@ mouse_buttons = []
 mouse_pos = []
 
 #Degrees to Radian function 
-def degtoRad(n):
+def deg_to_rad(n):
     return (n/360.0) * (pi*2)
 
 #Asteroid Class
@@ -90,7 +90,7 @@ class Asteroid:
              
          return
 
-    def collide (self, otherThing):
+    def collide (self, other_thing):
         otherX = 0
         otherY = 1
         try:
@@ -100,7 +100,7 @@ class Asteroid:
             otherX = other_thing.center[0]
             otherY = other_thing.center[1]
         distance = ((otherX - self.x)**2+(otherY - self.y)**2)**0.5
-        radii = self.radius + otherThing.radius
+        radii = self.radius + other_thing.radius
         return distance <= radii
 
     def resize (self, radius):
