@@ -23,7 +23,7 @@ class Asteroid:
         #Position & Movement 
         self.render_Surface = render_Surface
         self.points = []
-        self.direction = degtoRad(56)
+        self.direction = deg_to_rad(56)
         self.speed = 1.0
         
         #Shape of the Asteroid
@@ -94,11 +94,11 @@ class Asteroid:
         otherX = 0
         otherY = 1
         try:
-            otherX = otherThing.x
-            otherY = otherThing.y
+            otherX = other_thing.x
+            otherY = other_thing.y
         except:
-            otherX = otherThing.center[0]
-            otherY = otherThing.center[1]
+            otherX = other_thing.center[0]
+            otherY = other_thing.center[1]
         distance = ((otherX - self.x)**2+(otherY - self.y)**2)**0.5
         radii = self.radius + otherThing.radius
         return distance <= radii
@@ -120,17 +120,17 @@ class Ship:
     def __init__ (self, render_Surface):
         self.render_Surface = render_Surface
         #self.points = [[150,550],[190,190],[200,190]]
-        self.gunBarrel = []
+        self.gun_barrel = []
         self.color = [255,255,255]
         self.thickness = 2
-        self.shipDirection = 0
+        self.ship_direction = 0
         self.speed = 5
         self.radius = 8
         #Origin (X,Y) 
         self.x = randint(0, screen_size[0])
         self.y = randint(0, screen_size[1])
         #Stored as angle/radius 
-        self.polar_cords = [[0,20], [degtoRad(100),5], [degtoRad(260),5]]
+        self.polar_cords = [[0,20], [deg_to_rad(100),5], [deg_to_rad(260),5]]
         self.rotation_speed = 5
         self.num_points = 3
         self.ship_explosion = Explosion(self.render_Surface, self.x, self.y)
@@ -141,15 +141,15 @@ class Ship:
     def update (self):
         #Ship Movement
         if keys_down [pg.K_RIGHT]:
-            self.shipDirection += 0.1
+            self.ship_direction += 0.1
             if self.sound_playing == False:
                 self.sound_playing = True
                 self.thruster_sound.play(loops=-1)
                 
                 
         if keys_down [pg.K_UP]:
-            dx = self.speed * cos(self.shipDirection)
-            dy = self.speed * sin(self.shipDirection)
+            dx = self.speed * cos(self.ship_direction)
+            dy = self.speed * sin(self.ship_direction)
             
 
             self.x += dx
@@ -173,13 +173,13 @@ class Ship:
             
             
         if keys_down [pg.K_LEFT]:
-            self.shipDirection -= 0.1
+            self.ship_direction -= 0.1
             if self.sound_playing == False:
                 self.sound_playing = True
                 self.thruster_sound.play(loops=-1)
-        xn = self.polar_cords[0][1]*cos(self.polar_cords[0][0]+self.shipDirection) + self.x
-        yn = self.polar_cords[0][1]*sin(self.polar_cords[0][0]+self.shipDirection) + self.y
-        self.gunBarrel = [xn,yn]
+        xn = self.polar_cords[0][1]*cos(self.polar_cords[0][0]+self.ship_direction) + self.x
+        yn = self.polar_cords[0][1]*sin(self.polar_cords[0][0]+self.ship_direction) + self.y
+        self.gun_barrel = [xn,yn]
         self.ship_explosion.x = self.x
         self.ship_explosion.y = self.y
         self.ship_explosion.update()
@@ -194,8 +194,8 @@ class Ship:
     def render (self):
         points = []
         for i in range (self.num_points):
-            xn = self.polar_cords[i][1]*cos(self.polar_cords[i][0]+self.shipDirection) + self.x
-            yn = self.polar_cords[i][1]*sin(self.polar_cords[i][0]+self.shipDirection) + self.y
+            xn = self.polar_cords[i][1]*cos(self.polar_cords[i][0]+self.ship_direction) + self.x
+            yn = self.polar_cords[i][1]*sin(self.polar_cords[i][0]+self.ship_direction) + self.y
             points.append([xn,yn])
             
             
@@ -218,7 +218,7 @@ class Bullet:
         self.radius = 3
         self.thickness = 0
         self.direction = 0
-        self.readyToFire = True
+        self.ready_to_fire = True
         self.visible = False
         self.active = True
         return
@@ -231,16 +231,16 @@ class Bullet:
             self.center[1] = dy + self.center[1]
             #Checking for center going off all sides of screen
             if self.center[0] > screen_size[0]:
-                self.readyToFire = True
+                self.ready_to_fire = True
                 self.visible = False
             if self.center[1] > screen_size[1]:
-                self.readyToFire = True
+                self.ready_to_fire = True
                 self.visible = False
             if self.center[0] < 0:
-                self.readyToFire = True
+                self.ready_to_fire = True
                 self.visible = False
             if self.center[1] < 0:
-                self.readyToFire = True
+                self.ready_to_fire = True
                 self.visible = False
             
         return
@@ -251,12 +251,12 @@ class Bullet:
         
         return
 
-    def shoot (self, speed, direction, startPosition):
-        if self.readyToFire == True:
-            self.center = startPosition
+    def shoot (self, speed, direction, start_position):
+        if self.ready_to_fire == True:
+            self.center = start_position
             self.direction = direction
             self.velocity = speed
-            self.readyToFire = False
+            self.ready_to_fire = False
             self.visible = True
             self.active = True 
         return
@@ -273,7 +273,7 @@ class Explosion:
         for i in range (10):
             self.particles.append(Bullet(randint(5,10), render_Surface))
             self.particles[i].radius = 1
-            self.direction = degtoRad(randint(0,360))
+            self.direction = deg_to_rad(randint(0,360))
             #end for
 
 
@@ -305,7 +305,7 @@ class Explosion:
             #particle.duration = random.randint(1,6)
             #particle.visible = True
             #particle.active = True
-            particle.shoot(random.randint(1,5), degtoRad(random.randint(0,360)), particle.center)
+            particle.shoot(random.randint(1,5), deg_to_rad(random.randint(0,360)), particle.center)
 
         return
     
@@ -340,7 +340,7 @@ def main():
 
     for i in range (2):
         num_asteroids.append(Asteroid(screen))
-        num_asteroids[-1].direction = degtoRad(randint(0,359))
+        num_asteroids[-1].direction = deg_to_rad(randint(0,359))
         
     #create main game loop
     running = True
@@ -358,7 +358,7 @@ def main():
         keys_down = pg.key.get_pressed()
         #Firing a bullet
         if keys_down[pg.K_SPACE]:
-            bullet.shoot(5, ship.shipDirection, ship.gunBarrel)
+            bullet.shoot(5, ship.ship_direction, ship.gun_barrel)
             bullet_sound.play()
 
         if keys_down[pg.K_e]:
@@ -405,7 +405,7 @@ def main():
                     new_asteroids[-1].x -= 10 
                     new_asteroids[-1].y = num_asteroids[i].y
                     new_asteroids[-1].y -= 10
-                    new_asteroids[-1].direction = bullet.direction + degtoRad(30)
+                    new_asteroids[-1].direction = bullet.direction + deg_to_rad(30)
 
                     new_asteroids.append(Asteroid(screen))
                     new_asteroids[-1].resize(num_asteroids[i].radius/2)
@@ -413,7 +413,7 @@ def main():
                     new_asteroids[-1].x -= 10 
                     new_asteroids[-1].y = num_asteroids[i].y
                     new_asteroids[-1].y -= 10
-                    new_asteroids[-1].direction = bullet.direction + degtoRad(-30)
+                    new_asteroids[-1].direction = bullet.direction + deg_to_rad(-30)
                     new_asteroids[-1].explosion.x = num_asteroids[i].x
                     new_asteroids[-1].explosion.y = num_asteroids[i].y
                     if new_asteroids[-1].radius > 13:
@@ -486,7 +486,7 @@ def main():
 
                 for i in range (2):
                     num_asteroids.append(Asteroid(screen))
-                    num_asteroids[-1].direction = degtoRad(randint(0,359))
+                    num_asteroids[-1].direction = deg_to_rad(randint(0,359))
 
             elif keys_down[pg.K_ESCAPE]:
                 running = False 
